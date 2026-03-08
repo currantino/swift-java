@@ -108,6 +108,17 @@ public struct SwiftToJava {
       )
 
       try generator.generate()
+
+    case .kotlin:
+      let generator = FFMSwift2KotlinGenerator(
+        config: self.config,
+        translator: translator,
+        javaPackage: config.javaPackage ?? "",
+        swiftOutputDirectory: outputSwiftDirectory,
+        javaOutputDirectory: outputJavaDirectory
+      )
+
+      try generator.generate()
     }
 
     print("[swift-java] Imported Swift module '\(swiftModule)': " + "done.".green)
