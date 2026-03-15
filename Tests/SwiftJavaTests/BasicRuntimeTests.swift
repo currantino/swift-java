@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import JavaNet
+import JavaUtil
 import SwiftJava
 import XCTest // NOTE: Workaround for https://github.com/swiftlang/swift-java/issues/43
 
@@ -95,6 +96,29 @@ class BasicRuntimeTests: XCTestCase {
     }.value
 
     XCTAssertEqual(string, "https://swift.org")
+  }
+
+  func testListIterator() throws {
+    let environment = try jvm.environment()
+
+    let javaList = try XCTUnwrap(ArrayList<JavaInteger>(environment: environment).as(List<JavaInteger>.self))
+    _ = javaList.add(JavaInteger(0, environment: environment))
+    _ = javaList.add(JavaInteger(1, environment: environment))
+    _ = javaList.add(JavaInteger(2, environment: environment))
+
+    XCTAssertEqual(javaList.map { $0.intValue() }, [0, 1, 2])
+  }
+
+  func testJavaOptional() throws {
+    let environment = try jvm.environment()
+
+    let value = JavaInteger(42, environment: environment)
+    let javaOptional = Optional.some(value).toJavaOptional()
+    if javaOptional.isPresent() {
+      XCTAssertEqual(javaOptional.get().intValue(), 42)
+    } else {
+      XCTFail("javaOptional is empty")
+    }
   }
 }
 

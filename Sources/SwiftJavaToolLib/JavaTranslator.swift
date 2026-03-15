@@ -66,6 +66,11 @@ package class JavaTranslator {
   /// methods will be implemented in Swift.
   package var swiftNativeImplementations: Set<String> = []
 
+  /// Parsed Android `api-versions.xml` data, if available.
+  /// When set, the translator will emit `@available(Android ...)` attributes
+  /// based on API-level introduction, deprecation, and removal data.
+  package var androidAPIVersions: AndroidAPIVersions?
+
   /// The set of nested classes that we should traverse from the given class,
   /// indexed by the name of the class.
   ///
@@ -150,7 +155,8 @@ extension JavaTranslator {
     method: JavaLangReflect.Method? = nil,
     _ javaType: Type,
     preferValueTypes: Bool,
-    outerOptional: OptionalKind
+    outerOptional: OptionalKind,
+    eraseTypeArguments: Bool = false
   ) throws -> String {
     // Replace type variables with their bounds.
     if let typeVariable = javaType.as(TypeVariable<GenericDeclaration>.self),
@@ -212,6 +218,9 @@ extension JavaTranslator {
 
         let typeArguments: [String] = try parameterizedType.getActualTypeArguments().compactMap { typeArg in
           guard let typeArg else { return nil }
+          if eraseTypeArguments {
+            return "JavaObject"
+          }
 
           let mappedSwiftName = try getSwiftTypeNameAsString(
             method: method,
@@ -224,7 +233,8 @@ extension JavaTranslator {
           if mappedSwiftName == nil || mappedSwiftName == "JavaObject" {
             // Try to salvage it, is it perhaps a type parameter?
             if let method {
-              if method.getTypeParameters().contains(where: { $0?.getTypeName() == typeArg.getTypeName() }) {
+              let typeParameters = method.getTypeParameters() as [TypeVariable<JavaLangReflect.Method>?]
+              if typeParameters.contains(where: { $0?.getTypeName() == typeArg.getTypeName() }) {
                 return typeArg.getTypeName()
               }
             }
