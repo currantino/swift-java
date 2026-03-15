@@ -80,6 +80,29 @@ func assertOutput(
     case .java:
       try generator.writeExportedJavaSources(&printer)
     }
+
+  case .kotlin:
+    let generator = FFMSwift2KotlinGenerator(
+      config: config,
+      translator: translator,
+      javaPackage: "com.example.swift",
+      swiftOutputDirectory: "/fake",
+      javaOutputDirectory: "/fake"
+    )
+
+    switch renderKind {
+    case .swift:
+      let ffmGen = FFMSwift2JavaGenerator(
+        config: config,
+        translator: translator,
+        javaPackage: "com.example.swift",
+        swiftOutputDirectory: "/fake",
+        javaOutputDirectory: "/fake"
+      )
+      try ffmGen.writeSwiftThunkSources(printer: &printer)
+    case .java:
+      try generator.writeExportedKotlinSources(printer: &printer)
+    }
   }
   output = printer.finalize()
 

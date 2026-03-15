@@ -67,6 +67,60 @@ final class FunctionLoweringTests {
     )
   }
 
+  @Test("Lowering optional String")
+  func loweringOptionalString() throws {
+    try assertLoweredFunction(
+      """
+      func takeString(str: String?) {}
+      """,
+      expectedCDecl: """
+        @_cdecl("c_takeString")
+        public func c_takeString(_ str: UnsafePointer<Int8>?) {
+          takeString(str: swiftjava_optionalStringFromCString(str))
+        }
+        """,
+      expectedCFunction: """
+        void c_takeString(const int8_t *str)
+        """
+    )
+  }
+
+  @Test("Lowering String result")
+  func loweringStringResult() throws {
+    try assertLoweredFunction(
+      """
+      func copy(str: String) -> String {}
+      """,
+      expectedCDecl: """
+        @_cdecl("c_copy")
+        public func c_copy(_ str: UnsafePointer<Int8>) -> UnsafePointer<Int8> {
+          return swiftjava_copyCString(copy(str: String(cString: str)))
+        }
+        """,
+      expectedCFunction: """
+        const int8_t *c_copy(const int8_t *str)
+        """
+    )
+  }
+
+  @Test("Lowering optional String result")
+  func loweringOptionalStringResult() throws {
+    try assertLoweredFunction(
+      """
+      func copy(str: String?) -> String? {}
+      """,
+      expectedCDecl: """
+        @_cdecl("c_copy")
+        public func c_copy(_ str: UnsafePointer<Int8>?) -> UnsafePointer<Int8>? {
+          return swiftjava_copyOptionalCString(copy(str: swiftjava_optionalStringFromCString(str)))
+        }
+        """,
+      expectedCFunction: """
+        const int8_t *c_copy(const int8_t *str)
+        """
+    )
+  }
+
   @Test("Lowering functions involving inout")
   func loweringInoutParameters() throws {
     try assertLoweredFunction(
