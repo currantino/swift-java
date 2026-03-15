@@ -12,6 +12,12 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
+import Darwin
+#else
+import Glibc
+#endif
+
 @_silgen_name("getTypeByStringByteArray")
 public func getTypeByStringByteArray(_ name: UnsafePointer<UInt8>) -> Any.Type? {
   let string = String(cString: name)
@@ -40,4 +46,31 @@ func _swiftjava_withHeapObject<R>(
   defer { _fixLifetime(object) }
   let unmanaged = Unmanaged.passUnretained(object)
   return body(unmanaged.toOpaque())
+}
+
+/// Convert an optional C string pointer into an optional Swift String.
+///
+/// This is used by generated cdecl thunks for `String?` parameters.
+public func swiftjava_optionalStringFromCString(_ value: UnsafePointer<Int8>?) -> String? {
+  guard let value else {
+    return nil
+  }
+  return String(cString: value)
+}
+
+/// Duplicate a Swift String as an owned C string pointer.
+///
+/// The pointer is suitable for immediate FFM consumption.
+public func swiftjava_copyCString(_ value: String) -> UnsafePointer<Int8> {
+  let duplicated = strdup(value)
+  precondition(duplicated != nil, "Failed to allocate C string copy")
+  return UnsafePointer(duplicated!)
+}
+
+/// Duplicate an optional Swift String as an optional owned C string pointer.
+public func swiftjava_copyOptionalCString(_ value: String?) -> UnsafePointer<Int8>? {
+  guard let value else {
+    return nil
+  }
+  return swiftjava_copyCString(value)
 }

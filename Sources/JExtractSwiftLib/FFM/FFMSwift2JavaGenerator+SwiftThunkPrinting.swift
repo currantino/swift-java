@@ -230,11 +230,12 @@ struct SwiftThunkTranslator {
     st.log.trace("Rendering thunks for: \(decl.displayName)")
 
     let thunkName = st.thunkNameRegistry.functionThunkName(decl: decl)
-    guard let translated = st.translatedDecl(for: decl) else {
+    let lowering = CdeclLowering(symbolTable: st.lookupContext.symbolTable)
+    guard let loweredSignature = try? lowering.lowerFunctionSignature(decl.functionSignature) else {
       return []
     }
 
-    let thunkFunc = translated.loweredSignature.cdeclThunk(
+    let thunkFunc = loweredSignature.cdeclThunk(
       cName: thunkName,
       swiftAPIName: decl.name,
       as: decl.apiKind

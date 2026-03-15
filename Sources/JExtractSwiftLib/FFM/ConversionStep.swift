@@ -68,6 +68,9 @@ enum ConversionStep: Equatable {
   /// Call a method with provided parameters.
   indirect case method(base: String?, methodName: String?, arguments: [LabeledArgument<ConversionStep>])
 
+  /// Call a global function with provided parameters.
+  case call(function: String, arguments: [LabeledArgument<ConversionStep>])
+
   indirect case optionalChain(ConversionStep)
 
   /// Count the number of times that the placeholder occurs within this
@@ -84,6 +87,8 @@ enum ConversionStep: Equatable {
     case .initialize(_, let arguments):
       arguments.reduce(0) { $0 + $1.argument.placeholderCount }
     case .method(_, _, let arguments):
+      arguments.reduce(0) { $0 + $1.argument.placeholderCount }
+    case .call(function: _, let arguments):
       arguments.reduce(0) { $0 + $1.argument.placeholderCount }
     case .placeholder, .tupleExplode, .closureLowering:
       1
@@ -198,6 +203,15 @@ enum ConversionStep: Equatable {
       } else {
         return "\(raw: methodApply)(\(raw: renderedArgumentList))"
       }
+
+    case .call(let function, let arguments):
+      let renderedArguments: [String] = arguments.map { labeledArgument in
+        let argExpr = labeledArgument.argument.asExprSyntax(placeholder: placeholder, bodyItems: &bodyItems)
+        return LabeledExprSyntax(label: labeledArgument.label, expression: argExpr!).description
+      }
+
+      let renderedArgumentList = renderedArguments.joined(separator: ", ")
+      return "\(raw: function)(\(raw: renderedArgumentList))"
 
     case .aggregate(let steps, let name):
       let toExplode: String

@@ -477,7 +477,21 @@ struct CdeclLowering {
           throw LoweringError.unhandledType(.optional(wrappedType))
         case .unsafeBufferPointer, .unsafeMutableBufferPointer:
           throw LoweringError.unhandledType(.optional(wrappedType))
-        case .void, .string:
+        case .string:
+          return LoweredParameter(
+            cdeclParameters: [
+              SwiftParameter(
+                convention: .byValue,
+                parameterName: parameterName,
+                type: .optional(knownTypes.unsafePointer(knownTypes.int8))
+              )
+            ],
+            conversion: .call(
+              function: "swiftjava_optionalStringFromCString",
+              arguments: [LabeledArgument(argument: .placeholder)]
+            )
+          )
+        case .void:
           throw LoweringError.unhandledType(.optional(wrappedType))
         case .foundationDataProtocol, .essentialsDataProtocol:
           throw LoweringError.unhandledType(.optional(wrappedType))
@@ -559,8 +573,27 @@ struct CdeclLowering {
       resultType = fn.resultType
       resultConversion = .placeholder
     } else {
-      // Non-trivial types are not yet supported.
-      throw LoweringError.unhandledType(.function(fn))
+      switch fn.resultType {
+      case .nominal(let nominal) where nominal.nominalTypeDecl.knownTypeKind == .string:
+        resultType = knownTypes.unsafePointer(knownTypes.int8)
+        resultConversion = .initialize(
+          knownTypes.string,
+          arguments: [
+            LabeledArgument(label: "cString", argument: .placeholder)
+          ]
+        )
+
+      case .optional(let wrapped) where wrapped == knownTypes.string:
+        resultType = .optional(knownTypes.unsafePointer(knownTypes.int8))
+        resultConversion = .call(
+          function: "swiftjava_optionalStringFromCString",
+          arguments: [LabeledArgument(argument: .placeholder)]
+        )
+
+      default:
+        // Non-trivial types are not yet supported.
+        throw LoweringError.unhandledType(.function(fn))
+      }
     }
 
     let isCompatibleWithC = parameterConversions.allSatisfy(\.isPlaceholder) && resultConversion.isPlaceholder
@@ -620,6 +653,23 @@ struct CdeclLowering {
 
         case .foundationData, .essentialsData:
           break
+
+        case .string:
+          return LoweredParameter(
+            cdeclParameters: [
+              SwiftParameter(
+                convention: .byValue,
+                parameterName: parameterName,
+                type: knownTypes.unsafePointer(knownTypes.int8)
+              )
+            ],
+            conversion: .initialize(
+              knownTypes.string,
+              arguments: [
+                LabeledArgument(label: "cString", argument: .placeholder)
+              ]
+            )
+          )
 
         default:
           throw LoweringError.unhandledType(type)
@@ -727,12 +777,21 @@ struct CdeclLowering {
         case .void:
           return LoweredResult(cdeclResultType: .void, cdeclOutParameters: [], conversion: .placeholder)
 
+        case .string:
+          return LoweredResult(
+            cdeclResultType: knownTypes.unsafePointer(knownTypes.int8),
+            cdeclOutParameters: [],
+            conversion: .call(function: "swiftjava_copyCString", arguments: [LabeledArgument(argument: .placeholder)])
+          )
+
         case .foundationData, .essentialsData:
           break
 
-        case .string, .optional:
-          // Not supported at this point.
-          throw LoweringError.unhandledType(type)
+        case .optional:
+          guard let genericArgs = nominal.genericArguments, genericArgs.count == 1 else {
+            throw LoweringError.unhandledType(type)
+          }
+          return try lowerResult(.optional(genericArgs[0]), outParameterName: outParameterName)
 
         default:
           // Unreachable? Should be handled by `CType(cdeclType:)` lowering above.
@@ -830,6 +889,13 @@ struct CdeclLowering {
           ],
           name: resultName
         )
+      )
+
+    case .optional(let wrapped) where wrapped == knownTypes.string:
+      return LoweredResult(
+        cdeclResultType: .optional(knownTypes.unsafePointer(knownTypes.int8)),
+        cdeclOutParameters: [],
+        conversion: .call(function: "swiftjava_copyOptionalCString", arguments: [LabeledArgument(argument: .placeholder)])
       )
 
     case .genericParameter, .function, .optional, .existential, .opaque, .composite, .array:
