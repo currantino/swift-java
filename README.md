@@ -1,3 +1,25 @@
+# Kotlin support
+
+I have implemented Swift-to-Kotlin interoperability via FFM. See design notes in [NOTES.md](NOTES.md).
+Most of the implementation is in `Sources/JExtractSwiftLib/Kotlin`.
+Tests are in `Tests/JExtractSwiftTests/Kotlin` runnable via `swift test`.
+
+To generate Kotlin code, run:
+```bash
+swift build
+./.build/debug/swift-java jextract \
+    --mode kotlin                  \
+    --swift-module <SwiftModule>   \
+    --input-swift <SwiftSources>   \
+    --output-java <GeneratedJava>  \
+    --output-swift <GeneratedSwift>
+```
+
+A sample Kotlin app that calls Swift functions is available in `Samples/KotlinSwiftFFMSampleApp`.
+```bash
+./gradlew Samples:KotlinSwiftFFMSampleApp:run
+```
+
 # Swift Java Interoperability Tools and Libraries
 
 This project contains tools and libraries that facilitate **Swift & Java Interoperability**.
